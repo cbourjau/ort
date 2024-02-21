@@ -1,0 +1,7 @@
+[workspace]
+members = [
+ "ort",
+ "ort-sys",
+ "ort-py",
+]
+resolver = "2"

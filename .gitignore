@@ -1,0 +1,7 @@
+/target
+# pixi environments
+.pixi
+
+/ort-sys/binding_gen/onnxruntime_c_api.h
+/.envrc
+/.direnv/
