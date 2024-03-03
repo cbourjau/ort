@@ -1,24 +1,18 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use ort::{IntoValue, Session, Tensor, TypeInfo, Value};
+use ort::{self, IntoValue, Session, Tensor, Value};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use numpy::{npyffi::NPY_TYPES, PyArray, PyReadonlyArrayDyn, PyUntypedArray};
 use pyo3::types::PyDict;
 
-/// Formats the sum of two numbers as string.
-#[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
-
 /// A Python module implemented in Rust.
 #[pymodule]
 fn _onnxrt(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     m.add_class::<PySession>()?;
+    m.add_class::<TypeInfo>()?;
     Ok(())
 }
 
@@ -77,12 +71,21 @@ impl PySession {
         Ok(out_dict)
     }
 
-    fn get_input_type_infos(&self) -> Vec<(&str, PyTypeInfo)> {
+    fn get_input_type_infos(&self) -> Vec<(&str, TypeInfo)> {
         self.session
             .get_input_infos()
             .unwrap()
             .into_iter()
-            .map(|(k, v)| (k, PyTypeInfo(v)))
+            .map(|(k, v)| (k, TypeInfo(v)))
+            .collect()
+    }
+
+    fn get_output_type_infos(&self) -> Vec<(&str, TypeInfo)> {
+        self.session
+            .get_output_infos()
+            .unwrap()
+            .into_iter()
+            .map(|(k, v)| (k, TypeInfo(v)))
             .collect()
     }
 }
@@ -147,15 +150,19 @@ fn i32_as_numpy_type(num: i32) -> NPY_TYPES {
 }
 
 #[pyclass]
-struct PyTypeInfo(TypeInfo);
+struct TypeInfo(ort::TypeInfo);
 
 #[pymethods]
-impl PyTypeInfo {
+impl TypeInfo {
     fn __str__(&self) -> String {
         match self.0 {
-            TypeInfo::Tensor(ref t) => {
+            ort::TypeInfo::Tensor(ref t) => {
                 format!("Tensor(dtype: {:?}, shape: {:?})", t.dtype, t.shape)
             }
         }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("TypeInfo.{}", self.__str__())
     }
 }

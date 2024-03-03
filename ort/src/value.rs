@@ -91,7 +91,11 @@ impl IntoValue for Wrapper<OrtValue> {
                 ort_sys::ONNXType_ONNX_TYPE_TENSOR => {
                     let tensor_info = api.type_info_as_tensor_type_info(&*type_info.ptr)?;
                     let onnx_dtype = api.get_tensor_data_type(tensor_info)?;
-                    let shape = dbg!(api.get_tensor_shape(tensor_info)?);
+                    let shape = api
+                        .get_tensor_shape(tensor_info)?
+                        .into_iter()
+                        .map(|el| el as usize)
+                        .collect();
 
                     Value::Tensor(match onnx_dtype {
                         ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => {

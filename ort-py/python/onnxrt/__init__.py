@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 import numpy as np
 
-from onnxrt._onnxrt import PySession
+from onnxrt._onnxrt import PySession, TypeInfo
 
 
 @runtime_checkable
@@ -39,18 +39,11 @@ class Session:
         return self._py_session.run(inputs)
 
     @property
-    def input_dtypes(self) -> dict[str, np.dtype]:
-        raise NotImplementedError()
+    def input_infos(self) -> dict[str, TypeInfo]:
+        return dict(self._py_session.get_input_type_infos())
 
     @property
-    def output_dtypes(self) -> dict[str, np.dtype]:
-        raise NotImplementedError()
+    def output_infos(self) -> dict[str, TypeInfo]:
+        return dict(self._py_session.get_output_type_infos())
 
-    @property
-    def input_shapes(self) -> dict[str, tuple[int | str | None, ...]]:
-        raise NotImplementedError()
-
-    @property
-    def output_shapes(self) -> dict[str, tuple[int | str | None, ...]]:
-        raise NotImplementedError()
-
+    

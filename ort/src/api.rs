@@ -403,14 +403,30 @@ impl Api {
         Ok(out)
     }
 
+    /// Get tensor shape.
+    ///
+    /// Dimensions with missing numerical length information (e.g. for session
+    /// inputs/outputs) are denoted by `-1`.
     pub unsafe fn get_tensor_shape(
         &self,
         tensor_info: *const OrtTensorTypeAndShapeInfo,
-    ) -> Result<Vec<usize>, ErrorStatus> {
+    ) -> Result<Vec<i64>, ErrorStatus> {
         let rank = self.get_tensor_rank(tensor_info)?;
-        let mut out: Vec<usize> = vec![0; rank];
+        let mut out: Vec<i64> = vec![0; rank];
 
         self.api.GetDimensions.unwrap()(tensor_info, out.as_mut_ptr() as *mut _, rank)
+            .into_result(self.api)?;
+        Ok(out)
+    }
+
+    pub unsafe fn get_tensor_shape_symbolic(
+        &self,
+        tensor_info: *const OrtTensorTypeAndShapeInfo,
+    ) -> Result<Vec<*const i8>, ErrorStatus> {
+        let rank = self.get_tensor_rank(tensor_info)?;
+        let mut out: Vec<*const i8> = vec![null(); rank];
+
+        self.api.GetSymbolicDimensions.unwrap()(tensor_info, out.as_mut_ptr() as *mut _, rank)
             .into_result(self.api)?;
         Ok(out)
     }
