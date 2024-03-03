@@ -46,4 +46,6 @@ class Session:
     def output_infos(self) -> dict[str, TypeInfo]:
         return dict(self._py_session.get_output_type_infos())
 
-    
+    @property
+    def metadata(self) -> dict[str, str]:
+        return self._py_session.get_metadata()

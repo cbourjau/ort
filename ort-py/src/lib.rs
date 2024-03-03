@@ -88,6 +88,10 @@ impl PySession {
             .map(|(k, v)| (k, TypeInfo(v)))
             .collect()
     }
+
+    fn get_metadata(&self) -> HashMap<String, String> {
+        self.session.get_metadata().unwrap()
+    }
 }
 
 struct PyValue(Value);

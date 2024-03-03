@@ -150,6 +150,20 @@ impl Session {
         }
         Ok(out)
     }
+
+    pub fn get_metadata(&self) -> Result<HashMap<String, String>, ErrorStatus> {
+        let mut out = HashMap::new();
+        for (k, v) in self
+            .api
+            .get_model_metadata_map(self.ort_sess.ptr)?
+            .into_iter()
+        {
+            let k = unsafe { CStr::from_ptr(k.ptr).to_str().unwrap() };
+            let v = unsafe { CStr::from_ptr(v.ptr).to_str().unwrap() };
+            out.insert(k.to_string(), v.to_string());
+        }
+        Ok(out)
+    }
 }
 
 impl Drop for Session {

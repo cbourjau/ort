@@ -8,8 +8,8 @@ use std::{
 use ort_sys::{
     ONNXTensorElementDataType, ONNXType, OrtAllocator, OrtAllocatorType_OrtArenaAllocator, OrtApi,
     OrtEnv, OrtGetApiBase, OrtLoggingLevel, OrtLoggingLevel_ORT_LOGGING_LEVEL_WARNING,
-    OrtMemType_OrtMemTypeDefault, OrtMemoryInfo, OrtRunOptions, OrtSession, OrtSessionOptions,
-    OrtStatusPtr, OrtTensorTypeAndShapeInfo, OrtTypeInfo, OrtValue,
+    OrtMemType_OrtMemTypeDefault, OrtMemoryInfo, OrtModelMetadata, OrtRunOptions, OrtSession,
+    OrtSessionOptions, OrtStatusPtr, OrtTensorTypeAndShapeInfo, OrtTypeInfo, OrtValue,
 };
 
 use crate::{ErrorStatus, TensorDataType, Wrapper, API_VERSION};
@@ -439,6 +439,79 @@ impl Api {
         self.api.SetSessionLogSeverityLevel.unwrap()(session_options, level as _)
             .into_result(self.api)
     }
+
+    #[allow(clippy::type_complexity)]
+    pub fn get_model_metadata_map(
+        &self,
+        sess: *const OrtSession,
+    ) -> Result<Vec<(Wrapper<i8>, Wrapper<i8>)>, ErrorStatus> {
+        unsafe {
+            let meta = self.get_model_metadata(sess)?;
+            let keys = self.get_model_metadata_keys(meta.ptr)?;
+
+            let mut out = Vec::with_capacity(keys.len());
+            for key in keys.into_iter() {
+                let value = self.get_model_metadata_value(meta.ptr, key.ptr)?;
+
+                out.push((key, value));
+            }
+            Ok(out)
+        }
+    }
+
+    unsafe fn get_model_metadata(
+        &self,
+        sess: *const OrtSession,
+    ) -> Result<Wrapper<OrtModelMetadata>, ErrorStatus> {
+        let mut ptr = null_mut();
+        self.api.SessionGetModelMetadata.unwrap()(sess, &mut ptr).into_result(self.api)?;
+
+        Ok(Wrapper {
+            ptr,
+            destructor: self.api.ReleaseModelMetadata.unwrap(),
+        })
+    }
+
+    unsafe fn get_model_metadata_keys(
+        &self,
+        meta: *const OrtModelMetadata,
+    ) -> Result<Vec<Wrapper<i8>>, ErrorStatus> {
+        let mut n = 0;
+        let mut ptrs = null_mut();
+        let alloc = self.get_allocator()?;
+        self.api.ModelMetadataGetCustomMetadataMapKeys.unwrap()(meta, alloc, &mut ptrs, &mut n)
+            .into_result(self.api)?;
+
+        let out: &mut [*mut i8] = slice::from_raw_parts_mut(ptrs, n as usize);
+        Ok(out
+            .iter_mut()
+            .map(|&mut ptr| Wrapper {
+                ptr,
+                destructor: dealloc_chars,
+            })
+            .collect())
+    }
+
+    unsafe fn get_model_metadata_value(
+        &self,
+        meta: *const OrtModelMetadata,
+        key: *const i8,
+    ) -> Result<Wrapper<i8>, ErrorStatus> {
+        let mut ptr = null_mut();
+        let alloc = self.get_allocator()?;
+        self.api.ModelMetadataLookupCustomMetadataMap.unwrap()(meta, alloc, key, &mut ptr)
+            .into_result(self.api)?;
+        Ok(Wrapper {
+            ptr,
+            destructor: dealloc_chars,
+        })
+    }
+}
+
+unsafe extern "C" fn dealloc_chars(ptr: *mut i8) {
+    let api = Api::new();
+    let alloc = api.get_allocator().unwrap();
+    api.free(alloc, ptr as *mut _).unwrap();
 }
 
 trait IntoResult {

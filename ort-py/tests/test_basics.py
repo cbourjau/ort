@@ -38,7 +38,18 @@ def test_type_infos(add_model):
     assert isinstance(sess.output_infos, dict)
     assert {"b"} == sess.output_infos.keys()
 
-    
+
+def test_metadata(add_model: onnx.ModelProto):
+    # Add some meta data
+    entry = add_model.metadata_props.add()
+    entry.key = "🦀"
+    entry.value =  "🚀"
+
+    sess = Session(model_proto=add_model)
+
+    assert {"🦀": "🚀"} == sess.metadata
+
+
 def test_run(add_model):
     sess = Session(model_proto=add_model)
     outputs = sess.run({"a": np.array([1, 2], np.float32)})
