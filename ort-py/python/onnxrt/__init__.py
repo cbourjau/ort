@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Protocol, runtime_checkable
+
 import numpy as np
 
 from onnxrt._onnxrt import PySession, TypeInfo

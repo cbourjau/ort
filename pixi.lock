@@ -89,6 +89,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/protobuf-4.25.2-py312h1a610f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/python-3.12.2-hdf0ec26_0_cpython.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/python_abi-3.12-4_cp312.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/rattler-build-0.12.1-h2b8f702_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.2-h92ec313_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ruff-0.3.0-py312h1ae9fbf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/rust-1.76.0-h4ff7c5d_0.conda
@@ -1369,6 +1370,22 @@ packages:
   license_family: BSD
   size: 6508
   timestamp: 1695147497048
+- kind: conda
+  name: rattler-build
+  version: 0.12.1
+  build: h2b8f702_0
+  subdir: osx-arm64
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/rattler-build-0.12.1-h2b8f702_0.conda
+  sha256: cdff3638a6ed692fd333f66e92b1ef93afc96ef36de8a0f22a2d70dc7570db01
+  md5: 6775ba7338e1a4cbf49ee6696dabf9ea
+  depends:
+  - libcxx >=16
+  constrains:
+  - __osx >=11.0
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 7336261
+  timestamp: 1709065054574
 - kind: conda
   name: readline
   version: '8.2'
