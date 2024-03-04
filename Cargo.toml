@@ -3,5 +3,6 @@ members = [
  "ort",
  "ort-sys",
  "ort-py",
+ "onnx_protos",
 ]
 resolver = "2"
