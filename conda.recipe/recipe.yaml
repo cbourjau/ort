@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+context:
+  version: "0.1.0"
+
+package:
+  name: onnxrt
+  version: ${{ version }}
+
+source:
+  path: ../
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('rust') }}
+    - cargo-bundle-licenses
+    - maturin
+    - onnxruntime-cpp
+    - pip
+    - python
+  run:
+    - numpy>=1.16.0
+    - onnxruntime-cpp>=1.16
+    - python>=3.7
+    - iconv # [osx-arm64]
+
+tests:
+  - script:
+      - python -c "import onnxrt"
+
+about:
+  homepage: https://github.com/cbourjau/ort
+  license: MIT
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  description: "A PyO3 based wrapper around onnxruntime with the goal of becoming an independent ONNX runtime."
+  summary: "A performant and user friendly ONNX runtime (based on onnxruntime)."
