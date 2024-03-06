@@ -6,7 +6,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use numpy::{npyffi::NPY_TYPES, PyArray, PyReadonlyArrayDyn, PyUntypedArray};
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyString};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -62,6 +62,10 @@ impl PySession {
                         let arr = data.array_view();
                         PyArray::from_array(py, &arr).to_object(py)
                     }
+                    Tensor::String(data) => {
+                        let arr = data.array_view().map(|el| el.to_object(py));
+                        PyArray::from_array(py, &arr).to_object(py)
+                    }
                 },
             };
 
@@ -111,6 +115,21 @@ impl<'source> FromPyObject<'source> for PyValue {
             NPY_DOUBLE => {
                 let arr = ob.extract::<PyReadonlyArrayDyn<f64>>()?;
                 PyValue(arr.as_array().to_owned().into_value().unwrap())
+            }
+            NPY_OBJECT => {
+                let py = ob.py();
+                let arr = ob.extract::<PyReadonlyArrayDyn<PyObject>>().unwrap();
+                let arr = arr.as_array().to_owned();
+
+                let arr = arr.mapv(|el| {
+                    el.extract::<&PyString>(py)
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                });
+
+                PyValue(arr.into_value().unwrap())
             }
             npy_type => panic!("Unsupported NumPy type: '{:?}'", npy_type),
         })

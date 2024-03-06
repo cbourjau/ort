@@ -14,6 +14,7 @@ pub enum Value {
 pub enum Tensor {
     F64(Data<f64>),
     F32(Data<f32>),
+    String(Data<String>),
 }
 
 pub struct Data<T> {
@@ -27,6 +28,7 @@ impl Value {
         match self {
             Value::Tensor(Tensor::F64(data)) => data.ort_value,
             Value::Tensor(Tensor::F32(data)) => data.ort_value,
+            Value::Tensor(Tensor::String(data)) => data.ort_value,
         }
     }
 }
@@ -51,7 +53,7 @@ pub trait IntoValue {
 
 impl<T> IntoValue for ArrayD<T>
 where
-    T: Clone + Copy + TensorDataType,
+    T: Clone + TensorDataType,
 {
     fn into_value(self) -> Result<Value, ErrorStatus> {
         let api = Api::new();
@@ -59,25 +61,9 @@ where
         let arr = self.as_standard_layout();
         let slice = arr.as_slice().unwrap();
         let shape = self.shape();
-        let ort_value = api.create_tensor_with_copied_data(slice, shape)?;
-        let tensor = match T::tensor_dtype() {
-            ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => {
-                Tensor::F64(Data {
-                    ort_value,
-                    shape: shape.to_vec(),
-                    phantom_type: PhantomData::<f64>,
-                })
-            }
-            ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT => {
-                Tensor::F32(Data {
-                    ort_value,
-                    shape: shape.to_vec(),
-                    phantom_type: PhantomData::<f32>,
-                })
-            }
-            _ => todo!(),
-        };
-        Ok(Value::Tensor(tensor))
+        let ort_value = api.create_tensor_with_cloned_data(slice, shape)?;
+
+        ort_value.into_value()
     }
 }
 
@@ -110,6 +96,13 @@ impl IntoValue for Wrapper<OrtValue> {
                                 ort_value: self,
                                 shape,
                                 phantom_type: PhantomData::<_>,
+                            })
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING => {
+                            Tensor::String(Data {
+                                ort_value: self,
+                                shape: shape.to_vec(),
+                                phantom_type: PhantomData::<String>,
                             })
                         }
                         _ => todo!(),

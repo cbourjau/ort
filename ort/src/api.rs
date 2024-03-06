@@ -299,13 +299,13 @@ impl Api {
     }
 
     /// Create a tensor that owns a copy of the `data`.
-    pub fn create_tensor_with_copied_data<T>(
+    pub fn create_tensor_with_cloned_data<T>(
         &self,
         data: &[T],
         shape: &[usize],
     ) -> Result<Wrapper<OrtValue>, ErrorStatus>
     where
-        T: TensorDataType + Sized + Copy,
+        T: TensorDataType + Sized + Clone,
     {
         let alloc = self.get_allocator()?;
 
@@ -327,7 +327,7 @@ impl Api {
 
         let ort_buffer =
             unsafe { slice::from_raw_parts_mut(self.get_tensor_data_mut(ort_value)?, data.len()) };
-        ort_buffer.copy_from_slice(data);
+        ort_buffer.clone_from_slice(data);
         Ok(Wrapper {
             ptr: ort_value,
             destructor: self.api.ReleaseValue.unwrap(),

@@ -12,6 +12,13 @@ def add_model():
     a = argument(Tensor(np.float32, ("N", )))
     b = op.add(a, a)
     return build({"a": a}, {"b": b})
+
+
+@pytest.fixture
+def identity_model():
+    a = argument(Tensor(np.str_, ("N", )))
+    b = op.identity(a)
+    return build({"a": a}, {"b": b})
     
 
 def test_basics_session_from_file(tmp_path, add_model: onnx.ModelProto):
@@ -56,3 +63,12 @@ def test_run(add_model):
 
     assert {"b"} == outputs.keys()
     np.testing.assert_array_equal(outputs["b"], np.array([2, 4], np.float32))
+
+
+def test_string_inputs(identity_model):
+    sess = Session(model_proto=identity_model)
+
+    exp = np.array(["a", "foo"*10], np.object_)
+    (candidate, ) = sess.run({"a": exp}).values()
+
+    np.testing.assert_array_equal(exp, candidate)
