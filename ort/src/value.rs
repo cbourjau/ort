@@ -23,6 +23,13 @@ pub struct Data<T> {
     phantom_type: PhantomData<T>,
 }
 
+/// Container holding a contiguous buffer of `str`s (NOT null terminated) and their respective offsets.
+pub struct StringContainer {
+    contiguous_buffer: Vec<u8>,
+    byte_offsets: Vec<usize>,
+    shape: Vec<usize>,
+}
+
 impl Value {
     pub(crate) fn ref_ort_value(&self) -> &Wrapper<OrtValue> {
         match self {
@@ -33,16 +40,59 @@ impl Value {
     }
 }
 
-impl<T> Data<T> {
+impl<T> Data<T>
+where
+    T: Copy,
+{
     pub fn array_view(&self) -> ArrayViewD<'_, T> {
         let api = Api::new();
 
         unsafe {
             ndarray::ArrayView::from_shape_ptr(
-                dbg!(self.shape.clone()),
+                self.shape.clone(),
                 api.get_tensor_data_mut(self.ort_value.ptr).unwrap(),
             )
         }
+    }
+}
+
+impl<String> Data<String> {
+    pub fn str_container(&self) -> StringContainer {
+        let api = Api::new();
+
+        let n_elements = self.shape.iter().product();
+
+        let (contiguous_buffer, byte_offsets) = unsafe {
+            api.get_string_tensor_buffer(self.ort_value.ptr, n_elements)
+                .unwrap()
+        };
+
+        StringContainer {
+            contiguous_buffer,
+            byte_offsets,
+            shape: self.shape.clone(),
+        }
+    }
+}
+
+impl StringContainer {
+    pub fn array(&self) -> ArrayD<&str> {
+        let starts = self.byte_offsets.iter();
+        let stops = self
+            .byte_offsets
+            .iter()
+            .skip(1)
+            .cloned()
+            .chain(std::iter::once(self.contiguous_buffer.len()));
+
+        let strs: Vec<&str> = starts
+            .zip(stops)
+            .map(|(&start, stop)| {
+                std::str::from_utf8(&self.contiguous_buffer[start..stop]).unwrap()
+            })
+            .collect();
+
+        ArrayD::from_shape_vec(self.shape.clone(), strs).unwrap()
     }
 }
 
@@ -51,9 +101,9 @@ pub trait IntoValue {
     fn into_value(self) -> Result<Value, ErrorStatus>;
 }
 
-impl<T> IntoValue for ArrayD<T>
+impl<'a, T> IntoValue for ArrayViewD<'a, T>
 where
-    T: Clone + TensorDataType,
+    T: Copy + TensorDataType,
 {
     fn into_value(self) -> Result<Value, ErrorStatus> {
         let api = Api::new();
@@ -61,7 +111,20 @@ where
         let arr = self.as_standard_layout();
         let slice = arr.as_slice().unwrap();
         let shape = self.shape();
-        let ort_value = api.create_tensor_with_cloned_data(slice, shape)?;
+        let ort_value = api.create_tensor_with_copied_data(slice, shape)?;
+
+        ort_value.into_value()
+    }
+}
+
+impl<'b> IntoValue for ArrayD<&'b str> {
+    fn into_value(self) -> Result<Value, ErrorStatus> {
+        let api = Api::new();
+
+        let arr = self.as_standard_layout();
+        let slice = arr.as_slice().unwrap();
+        let shape = self.shape();
+        let ort_value = api.create_string_tensor(slice, shape)?;
 
         ort_value.into_value()
     }
@@ -126,7 +189,7 @@ mod tests {
     #[test]
     fn test_roundtrip_array_to_value_to_array() {
         let arr = array![1.0, 2.0].into_dyn();
-        let val = arr.clone().into_value().unwrap();
+        let val = arr.view().into_value().unwrap();
 
         let api = Api::new();
         let ort_val = val.ref_ort_value();

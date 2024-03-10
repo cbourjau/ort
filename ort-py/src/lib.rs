@@ -42,6 +42,7 @@ impl PySession {
     fn run<'py>(&self, inputs: &'py PyDict) -> PyResult<&'py PyDict> {
         let py = inputs.py();
 
+        // TODO: Avoid copy of inputs if possible?
         let inputs: HashMap<String, PyValue> = inputs.extract()?;
         let inputs: HashMap<&str, &Value> =
             inputs.iter().map(|(k, v)| (k.as_str(), &v.0)).collect();
@@ -64,7 +65,9 @@ impl PySession {
                         PyArray::from_array(py, &arr).to_object(py)
                     }
                     Tensor::String(data) => {
-                        let arr = data.array_view().map(|el| el.to_object(py));
+                        let container = data.str_container();
+                        let arr = container.array();
+                        let arr = arr.map(|el| el.to_object(py));
                         PyArray::from_array(py, &arr).to_object(py)
                     }
                 },
@@ -111,24 +114,18 @@ impl<'source> FromPyObject<'source> for PyValue {
         Ok(match dtype_num_as_npy_type(dtype)? {
             NPY_FLOAT => {
                 let arr = ob.extract::<PyReadonlyArrayDyn<f32>>()?;
-                PyValue(arr.as_array().to_owned().into_value().unwrap())
+                PyValue(arr.as_array().into_value().unwrap())
             }
             NPY_DOUBLE => {
                 let arr = ob.extract::<PyReadonlyArrayDyn<f64>>()?;
-                PyValue(arr.as_array().to_owned().into_value().unwrap())
+                PyValue(arr.as_array().into_value().unwrap())
             }
             NPY_OBJECT => {
                 let py = ob.py();
-                let arr = ob.extract::<PyReadonlyArrayDyn<PyObject>>().unwrap();
-                let arr = arr.as_array().to_owned();
+                let arr = ob.extract::<PyReadonlyArrayDyn<PyObject>>()?;
+                let arr = arr.as_array();
 
-                let arr = arr.mapv(|el| {
-                    el.extract::<&PyString>(py)
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_string()
-                });
+                let arr = arr.map(|el| el.extract::<&PyString>(py).unwrap().to_str().unwrap());
 
                 PyValue(arr.into_value().unwrap())
             }

@@ -131,7 +131,8 @@ mod tests {
         let sess = Session::from_bytes(model).unwrap();
         let rt_opts = api.create_run_options().unwrap();
 
-        let val = array![-1.0f32, -2.0].into_dyn().into_value().unwrap();
+        let arr = array![-1.0f32, -2.0].into_dyn();
+        let val = arr.view().into_value().unwrap();
 
         let input = val.ref_ort_value();
 
@@ -155,7 +156,8 @@ mod tests {
         let model = make_abs_model().into_bytes();
         let sess = Session::from_bytes(model).unwrap();
 
-        let input = array![-1.0f32, -2.0].into_dyn().into_value().unwrap();
+        let arr = array![-1.0f32, -2.0].into_dyn();
+        let input = arr.view().into_value().unwrap();
         let mut out = sess.run([("a", &input)].into(), None).unwrap();
 
         assert_eq!(out.len(), 1);

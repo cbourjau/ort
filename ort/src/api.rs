@@ -299,13 +299,13 @@ impl Api {
     }
 
     /// Create a tensor that owns a copy of the `data`.
-    pub fn create_tensor_with_cloned_data<T>(
+    pub fn create_tensor_with_copied_data<T>(
         &self,
         data: &[T],
         shape: &[usize],
     ) -> Result<Wrapper<OrtValue>, ErrorStatus>
     where
-        T: TensorDataType + Sized + Clone,
+        T: TensorDataType + Sized + Copy,
     {
         let alloc = self.get_allocator()?;
 
@@ -334,6 +334,46 @@ impl Api {
         })
     }
 
+    /// Create a string tensor by copying the data into the buffer of the returned `OrtValue`.
+    pub fn create_string_tensor(
+        &self,
+        data: &[&str],
+        shape: &[usize],
+    ) -> Result<Wrapper<OrtValue>, ErrorStatus> {
+        let alloc = self.get_allocator()?;
+
+        let shape_len = shape.len();
+        let ty = String::tensor_dtype();
+
+        let mut ort_value = null_mut();
+
+        unsafe {
+            self.api.CreateTensorAsOrtValue.unwrap()(
+                alloc,
+                shape.as_ptr() as _,
+                shape_len,
+                ty,
+                &mut ort_value,
+            )
+            .into_result(self.api)?
+        };
+
+        // Null terminated Cstrings
+        let cstrings: Vec<_> = data
+            .iter()
+            .map(|&s| CString::new(s).expect("String contains null bytes"))
+            .collect();
+
+        let cstrs: Vec<_> = cstrings.iter().map(|s| s.as_c_str().as_ptr()).collect();
+
+        unsafe { self.api.FillStringTensor.unwrap()(ort_value, cstrs.as_ptr(), data.len()) };
+
+        Ok(Wrapper {
+            ptr: ort_value,
+            destructor: self.api.ReleaseValue.unwrap(),
+        })
+    }
+
     pub unsafe fn get_tensor_data_mut<T>(
         &self,
         value: *mut OrtValue,
@@ -343,6 +383,38 @@ impl Api {
             self.api.GetTensorMutableData.unwrap()(value, &mut out).into_result(self.api)?;
             Ok(out as *mut _)
         }
+    }
+
+    pub fn get_string_tensor_data_length(
+        &self,
+        value: *const OrtValue,
+    ) -> Result<usize, ErrorStatus> {
+        let mut len = 0;
+        unsafe {
+            self.api.GetStringTensorDataLength.unwrap()(value, &mut len).into_result(self.api)?
+        };
+        Ok(len)
+    }
+
+    /// Get a contiguous copy of a string tensor buffer with the respective `offsets`.
+    pub unsafe fn get_string_tensor_buffer(
+        &self,
+        value: *const OrtValue,
+        offset_len: usize,
+    ) -> Result<(Vec<u8>, Vec<usize>), ErrorStatus> {
+        let buf_len = self.get_string_tensor_data_length(value)?;
+
+        let mut buf: Vec<u8> = vec![0; buf_len];
+
+        let mut offsets = vec![0; offset_len];
+        self.api.GetStringTensorContent.unwrap()(
+            value,
+            buf.as_mut_ptr() as *mut _,
+            buf_len,
+            offsets.as_mut_ptr(),
+            offset_len,
+        );
+        Ok((buf, offsets))
     }
 
     /// Free the pointed-to memory using the provided allocator
@@ -429,6 +501,16 @@ impl Api {
         self.api.GetSymbolicDimensions.unwrap()(tensor_info, out.as_mut_ptr() as *mut _, rank)
             .into_result(self.api)?;
         Ok(out)
+    }
+
+    pub unsafe fn get_tensor_element_count(
+        &self,
+        tensor_info: *const OrtTensorTypeAndShapeInfo,
+    ) -> Result<usize, ErrorStatus> {
+        let mut n = 0;
+        self.api.GetTensorShapeElementCount.unwrap()(tensor_info, &mut n).into_result(self.api)?;
+
+        Ok(n)
     }
 
     pub unsafe fn set_log_severity(
