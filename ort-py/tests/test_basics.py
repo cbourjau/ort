@@ -7,19 +7,22 @@ import pytest
 from onnxrt import Session
 
 
-@pytest.fixture
-def add_model():
-    a = argument(Tensor(np.float32, ("N", )))
+def make_add_model(dtype):
+    a = argument(Tensor(dtype, ("N",)))
     b = op.add(a, a)
     return build({"a": a}, {"b": b})
 
 
-@pytest.fixture
-def identity_model():
-    a = argument(Tensor(np.str_, ("N", )))
+def make_identity_model(dtype):
+    a = argument(Tensor(dtype, ("N",)))
     b = op.identity(a)
     return build({"a": a}, {"b": b})
-    
+
+
+@pytest.fixture
+def add_model():
+    return make_add_model(np.float32)
+
 
 def test_basics_session_from_file(tmp_path, add_model: onnx.ModelProto):
     path = tmp_path / "model.onnx"
@@ -50,7 +53,7 @@ def test_metadata(add_model: onnx.ModelProto):
     # Add some meta data
     entry = add_model.metadata_props.add()
     entry.key = "🦀"
-    entry.value =  "🚀"
+    entry.value = "🚀"
 
     sess = Session(model_proto=add_model)
 
@@ -65,10 +68,39 @@ def test_run(add_model):
     np.testing.assert_array_equal(outputs["b"], np.array([2, 4], np.float32))
 
 
-def test_string_inputs(identity_model):
-    sess = Session(model_proto=identity_model)
+def test_string_inputs():
+    model = make_identity_model(np.str_)
+    sess = Session(model_proto=model)
 
-    exp = np.array(["a", "foo"*10], np.object_)
-    (candidate, ) = sess.run({"a": exp}).values()
+    exp = np.array(["a", "foo" * 10], np.object_)
+    (candidate,) = sess.run({"a": exp}).values()
 
     np.testing.assert_array_equal(exp, candidate)
+
+
+@pytest.mark.parametrize(
+    "dtype",
+    [
+        np.bool_,
+        np.uint8,
+        np.uint16,
+        np.uint32,
+        np.uint64,
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+        np.float32,
+        np.float64,
+    ],
+)
+def test_numeric_and_bool_data_types(dtype):
+    model = make_identity_model(dtype)
+    sess = Session(model_proto=model)
+
+    inp = np.array([1, 2, 3], dtype)
+    candidate = sess.run({"a": inp})
+
+    exp = inp
+    assert candidate.keys() == {"b"}
+    np.testing.assert_array_equal(exp, candidate["b"])

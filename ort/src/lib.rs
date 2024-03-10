@@ -6,12 +6,13 @@ mod type_info;
 mod value;
 
 pub use crate::session::Session;
+pub use crate::tensor_dtype::TensorDataType;
 pub use crate::type_info::{TensorInfo, TypeInfo};
 pub use crate::value::{IntoValue, Tensor, Value};
 
 pub const API_VERSION: u32 = 16;
 
-pub(crate) use crate::{api::Api, error::ErrorStatus, tensor_dtype::TensorDataType};
+pub(crate) use crate::{api::Api, error::ErrorStatus};
 
 // TODO: this should not be pub
 pub struct Wrapper<T> {

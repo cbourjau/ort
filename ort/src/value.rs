@@ -12,8 +12,21 @@ pub enum Value {
 }
 
 pub enum Tensor {
+    U8(Data<u8>),
+    U16(Data<u16>),
+    U32(Data<u32>),
+    U64(Data<u64>),
+
+    I8(Data<i8>),
+    I16(Data<i16>),
+    I32(Data<i32>),
+    I64(Data<i64>),
+
     F64(Data<f64>),
     F32(Data<f32>),
+
+    Bool(Data<bool>),
+
     String(Data<String>),
 }
 
@@ -33,8 +46,20 @@ pub struct StringContainer {
 impl Value {
     pub(crate) fn ref_ort_value(&self) -> &Wrapper<OrtValue> {
         match self {
+            Value::Tensor(Tensor::U8(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::U16(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::U32(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::U64(ref data)) => &data.ort_value,
+
+            Value::Tensor(Tensor::I8(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::I16(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::I32(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::I64(ref data)) => &data.ort_value,
+
             Value::Tensor(Tensor::F64(ref data)) => &data.ort_value,
             Value::Tensor(Tensor::F32(ref data)) => &data.ort_value,
+
+            Value::Tensor(Tensor::Bool(ref data)) => &data.ort_value,
             Value::Tensor(Tensor::String(ref data)) => &data.ort_value,
         }
     }
@@ -146,28 +171,58 @@ impl IntoValue for Wrapper<OrtValue> {
                         .map(|el| el as usize)
                         .collect();
 
-                    Value::Tensor(match onnx_dtype {
-                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => {
-                            Tensor::F64(Data {
+                    macro_rules! make_data {
+                        () => {
+                            Data {
                                 ort_value: self,
                                 shape,
                                 phantom_type: PhantomData::<_>,
-                            })
+                            }
+                        };
+                    }
+
+                    Value::Tensor(match onnx_dtype {
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8 => {
+                            Tensor::U8(make_data!())
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16 => {
+                            Tensor::U16(make_data!())
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32 => {
+                            Tensor::U32(make_data!())
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64 => {
+                            Tensor::U64(make_data!())
+                        }
+
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8 => {
+                            Tensor::I8(make_data!())
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16 => {
+                            Tensor::I16(make_data!())
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32 => {
+                            Tensor::I32(make_data!())
+                        }
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 => {
+                            Tensor::I64(make_data!())
+                        }
+
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE => {
+                            Tensor::F64(make_data!())
                         }
                         ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT => {
-                            Tensor::F32(Data {
-                                ort_value: self,
-                                shape,
-                                phantom_type: PhantomData::<_>,
-                            })
+                            Tensor::F32(make_data!())
                         }
+
+                        ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL => {
+                            Tensor::Bool(make_data!())
+                        }
+
                         ort_sys::ONNXTensorElementDataType_ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING => {
-                            Tensor::String(Data {
-                                ort_value: self,
-                                shape: shape.to_vec(),
-                                phantom_type: PhantomData::<String>,
-                            })
+                            Tensor::String(make_data!())
                         }
+
                         _ => todo!(),
                     })
                 }
