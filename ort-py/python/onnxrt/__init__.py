@@ -49,4 +49,4 @@ class Session:
 
     @property
     def metadata(self) -> dict[str, str]:
-        return self._py_session.get_metadata()
+        return self._py_session.get_model_metadata()

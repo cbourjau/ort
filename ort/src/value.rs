@@ -24,11 +24,11 @@ pub struct Data<T> {
 }
 
 impl Value {
-    pub(crate) fn into_ort_value(self) -> Wrapper<OrtValue> {
+    pub(crate) fn ref_ort_value(&self) -> &Wrapper<OrtValue> {
         match self {
-            Value::Tensor(Tensor::F64(data)) => data.ort_value,
-            Value::Tensor(Tensor::F32(data)) => data.ort_value,
-            Value::Tensor(Tensor::String(data)) => data.ort_value,
+            Value::Tensor(Tensor::F64(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::F32(ref data)) => &data.ort_value,
+            Value::Tensor(Tensor::String(ref data)) => &data.ort_value,
         }
     }
 }
@@ -129,7 +129,7 @@ mod tests {
         let val = arr.clone().into_value().unwrap();
 
         let api = Api::new();
-        let ort_val = val.into_ort_value();
+        let ort_val = val.ref_ort_value();
 
         let ptr: *const f64 = unsafe { api.get_tensor_data_mut(ort_val.ptr).unwrap() };
 

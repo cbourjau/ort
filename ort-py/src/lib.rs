@@ -5,7 +5,7 @@ use ort::{self, IntoValue, Session, Tensor, Value};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use numpy::{npyffi::NPY_TYPES, PyArray, PyReadonlyArrayDyn, PyUntypedArray};
+use numpy::{npyffi::NPY_TYPES, PyArray, PyArrayDescr, PyReadonlyArrayDyn, PyUntypedArray};
 use pyo3::types::{PyDict, PyString};
 
 /// A Python module implemented in Rust.
@@ -43,9 +43,10 @@ impl PySession {
         let py = inputs.py();
 
         let inputs: HashMap<String, PyValue> = inputs.extract()?;
-        let inputs = inputs.into_iter().map(|(k, v)| (k, v.0)).collect();
+        let inputs: HashMap<&str, &Value> =
+            inputs.iter().map(|(k, v)| (k.as_str(), &v.0)).collect();
 
-        let outputs = self.session.run(inputs, None).unwrap();
+        let outputs = py.allow_threads(|| self.session.run(inputs, None).unwrap());
 
         // Allocate outputs on the Python side
         let out_dict = PyDict::new(py);
@@ -93,8 +94,8 @@ impl PySession {
             .collect()
     }
 
-    fn get_metadata(&self) -> HashMap<String, String> {
-        self.session.get_metadata().unwrap()
+    fn get_model_metadata(&self) -> HashMap<String, String> {
+        self.session.get_model_metadata().unwrap()
     }
 }
 
@@ -107,7 +108,7 @@ impl<'source> FromPyObject<'source> for PyValue {
 
         use NPY_TYPES::*;
 
-        Ok(match i32_as_numpy_type(dtype.num()) {
+        Ok(match dtype_num_as_npy_type(dtype)? {
             NPY_FLOAT => {
                 let arr = ob.extract::<PyReadonlyArrayDyn<f32>>()?;
                 PyValue(arr.as_array().to_owned().into_value().unwrap())
@@ -131,15 +132,15 @@ impl<'source> FromPyObject<'source> for PyValue {
 
                 PyValue(arr.into_value().unwrap())
             }
-            npy_type => panic!("Unsupported NumPy type: '{:?}'", npy_type),
+            _ => panic!("Unsupported NumPy type: '{:?}'", dtype),
         })
     }
 }
 
-fn i32_as_numpy_type(num: i32) -> NPY_TYPES {
+fn dtype_num_as_npy_type(dtype: &PyArrayDescr) -> PyResult<NPY_TYPES> {
     use NPY_TYPES::*;
 
-    match num {
+    Ok(match dtype.num() {
         0 => NPY_BOOL,
         1 => NPY_BYTE,
         2 => NPY_UBYTE,
@@ -168,8 +169,11 @@ fn i32_as_numpy_type(num: i32) -> NPY_TYPES {
         25 => NPY_NOTYPE,
         26 => NPY_CHAR,
         256 => NPY_USERDEF,
-        num => panic!("Unrecognized NumPy type id {}", num),
-    }
+        _ => Err(PyValueError::new_err(format!(
+            "Unrecongnized NumPy dtype: `{}`",
+            dtype
+        )))?,
+    })
 }
 
 #[pyclass]

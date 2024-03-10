@@ -67,12 +67,12 @@ impl Session {
 
     pub fn run(
         &self,
-        inputs: HashMap<String, Value>,
+        inputs: HashMap<&str, &Value>,
         run_options: Option<Wrapper<OrtRunOptions>>,
     ) -> Result<HashMap<&str, Value>, ErrorStatus> {
         let inputs = inputs
             .into_iter()
-            .map(|(k, v)| Ok::<_, ErrorStatus>((k, v.into_ort_value())))
+            .map(|(k, v)| Ok::<_, ErrorStatus>((k, v.ref_ort_value())))
             .collect::<Result<HashMap<_, _>, ErrorStatus>>()?;
         let run_options = match run_options {
             None => self.api.create_run_options()?,
@@ -88,7 +88,7 @@ impl Session {
 
     pub(crate) fn run_ort_values<'a>(
         &'a self,
-        inputs: &HashMap<String, Wrapper<OrtValue>>,
+        inputs: &HashMap<&str, &Wrapper<OrtValue>>,
         run_options: Wrapper<OrtRunOptions>,
     ) -> Result<HashMap<&'a str, Wrapper<OrtValue>>, ErrorStatus> {
         let mut in_values = vec![];
@@ -151,7 +151,7 @@ impl Session {
         Ok(out)
     }
 
-    pub fn get_metadata(&self) -> Result<HashMap<String, String>, ErrorStatus> {
+    pub fn get_model_metadata(&self) -> Result<HashMap<String, String>, ErrorStatus> {
         let mut out = HashMap::new();
         for (k, v) in self
             .api
@@ -177,3 +177,5 @@ impl Drop for Session {
         }
     }
 }
+
+unsafe impl Sync for Session {}

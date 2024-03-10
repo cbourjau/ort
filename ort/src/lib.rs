@@ -25,6 +25,9 @@ impl<T> Drop for Wrapper<T> {
     }
 }
 
+unsafe impl<T> Send for Wrapper<T> {}
+unsafe impl<T> Sync for Wrapper<T> {}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -130,10 +133,10 @@ mod tests {
 
         let val = array![-1.0f32, -2.0].into_dyn().into_value().unwrap();
 
-        let input = val.into_ort_value();
+        let input = val.ref_ort_value();
 
         let out = sess
-            .run_ort_values(&[("a".to_string(), input)].into(), rt_opts)
+            .run_ort_values(&[("a", input)].into(), rt_opts)
             .unwrap();
 
         let out = unsafe {
@@ -153,7 +156,7 @@ mod tests {
         let sess = Session::from_bytes(model).unwrap();
 
         let input = array![-1.0f32, -2.0].into_dyn().into_value().unwrap();
-        let mut out = sess.run([("a".to_string(), input)].into(), None).unwrap();
+        let mut out = sess.run([("a", &input)].into(), None).unwrap();
 
         assert_eq!(out.len(), 1);
 
