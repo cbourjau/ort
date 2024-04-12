@@ -9,11 +9,9 @@ else
 fi
 
 cargo-bundle-licenses --format yaml --output ${SRC_DIR}/THIRDPARTY.yml
+
 maturin build -m ort-py/Cargo.toml --release --skip-auditwheel
 python -m pip install target/wheels/onnxrt*.whl -vv --no-deps --no-build-isolation --prefix=${PREFIX}
-
-# strip debug symbols
-# "$STRIP" "$PREFIX/bin/py-spy"
 
 # remove extra build file
 rm -f "${PREFIX}/.crates.toml"
