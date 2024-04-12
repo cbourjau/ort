@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Build package
+    name: Rattler build
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,3 +26,8 @@ jobs:
           # needs to be unique for each matrix entry
           artifact-name: package-${{ matrix.target-platform }}
           build-args: --target-platform ${{ matrix.target-platform }}${{ matrix.target-platform == 'linux-aarch64' && ' --no-test' || '' }} --variant-config ./conda.recipe/variant_config.yaml  -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ort-${{ matrix.os }}-${{ matrix.target-platform }}
+          path: ${{ format('output/{0}', matrix.target-platform) }}
+          if-no-files-found: error

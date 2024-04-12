@@ -14,7 +14,6 @@ pub struct Session {
     alloc: *mut OrtAllocator,
     input_names: Vec<*const c_char>,
     output_names: Vec<*const c_char>,
-    // input_type_infos: HashMap<*const c_char, OrtTypeInfo>,
 }
 
 impl Session {
@@ -22,15 +21,13 @@ impl Session {
         let api = Api::new();
 
         let alloc = api.get_allocator()?;
-        let env = api.create_env("log_id")?;
+        let env = api.create_env("Runtime environment")?;
         let opts = api.create_session_option()?;
 
         let ort_sess = api.create_session_from_bytes(model, env.ptr, opts.ptr)?;
 
         let input_names = api.get_input_names(ort_sess.ptr)?;
         let output_names = api.get_output_names(ort_sess.ptr)?;
-
-        // let input_type_infos = unimplemented!();
 
         Ok(Self {
             api,
@@ -39,7 +36,6 @@ impl Session {
             input_names,
             output_names,
             ort_sess,
-            // input_type_infos,
         })
     }
 
@@ -47,7 +43,7 @@ impl Session {
         let api = Api::new();
 
         let alloc = api.get_allocator()?;
-        let env = api.create_env("log_id")?;
+        let env = api.create_env("Runtime environment")?;
         let opts = api.create_session_option()?;
 
         let ort_sess = api.create_session_from_file(model.to_str().unwrap(), env.ptr, opts.ptr)?;
@@ -84,6 +80,37 @@ impl Session {
             .into_iter()
             .map(|(k, ort_v)| Ok((k, ort_v.into_value()?)))
             .collect()
+    }
+
+    pub fn get_input_infos(&self) -> Result<Vec<(&str, TypeInfo)>, ErrorStatus> {
+        let mut out = Vec::new();
+        for (idx, k) in self.input_names_iter().enumerate() {
+            let info = self.api.get_input_type_info(self.ort_sess.ptr, idx)?;
+            out.push((k, TypeInfo::new(&self.api, &info)?));
+        }
+        Ok(out)
+    }
+    pub fn get_output_infos(&self) -> Result<Vec<(&str, TypeInfo)>, ErrorStatus> {
+        let mut out = Vec::new();
+        for (idx, k) in self.output_names_iter().enumerate() {
+            let info = self.api.get_output_type_info(self.ort_sess.ptr, idx)?;
+            out.push((k, TypeInfo::new(&self.api, &info)?));
+        }
+        Ok(out)
+    }
+
+    pub fn get_model_metadata(&self) -> Result<HashMap<String, String>, ErrorStatus> {
+        let mut out = HashMap::new();
+        for (k, v) in self
+            .api
+            .get_model_metadata_map(self.ort_sess.ptr)?
+            .into_iter()
+        {
+            let k = unsafe { CStr::from_ptr(k.ptr).to_str().unwrap() };
+            let v = unsafe { CStr::from_ptr(v.ptr).to_str().unwrap() };
+            out.insert(k.to_string(), v.to_string());
+        }
+        Ok(out)
     }
 
     pub(crate) fn run_ort_values<'a>(
@@ -132,37 +159,6 @@ impl Session {
         self.output_names
             .iter()
             .map(|k| unsafe { CStr::from_ptr(*k as *const _).to_str().unwrap() })
-    }
-
-    pub fn get_input_infos(&self) -> Result<Vec<(&str, TypeInfo)>, ErrorStatus> {
-        let mut out = Vec::new();
-        for (idx, k) in self.input_names_iter().enumerate() {
-            let info = self.api.get_input_type_info(self.ort_sess.ptr, idx)?;
-            out.push((k, TypeInfo::new(&self.api, &info)?));
-        }
-        Ok(out)
-    }
-    pub fn get_output_infos(&self) -> Result<Vec<(&str, TypeInfo)>, ErrorStatus> {
-        let mut out = Vec::new();
-        for (idx, k) in self.output_names_iter().enumerate() {
-            let info = self.api.get_output_type_info(self.ort_sess.ptr, idx)?;
-            out.push((k, TypeInfo::new(&self.api, &info)?));
-        }
-        Ok(out)
-    }
-
-    pub fn get_model_metadata(&self) -> Result<HashMap<String, String>, ErrorStatus> {
-        let mut out = HashMap::new();
-        for (k, v) in self
-            .api
-            .get_model_metadata_map(self.ort_sess.ptr)?
-            .into_iter()
-        {
-            let k = unsafe { CStr::from_ptr(k.ptr).to_str().unwrap() };
-            let v = unsafe { CStr::from_ptr(v.ptr).to_str().unwrap() };
-            out.insert(k.to_string(), v.to_string());
-        }
-        Ok(out)
     }
 }
 
