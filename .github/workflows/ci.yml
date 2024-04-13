@@ -29,7 +29,7 @@ jobs:
           fi
           cargo fmt -- --check
           cargo clippy --bins --tests --examples --all -- -D warnings
-          cargo test --all-features
+          cargo test --all-features --release
         shell: pixi run bash -e {0}
         env:
           RUST_BACKTRACE: 1
