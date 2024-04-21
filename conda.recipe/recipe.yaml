@@ -15,19 +15,46 @@ requirements:
     - ${{ compiler('c') }}
     - ${{ compiler('rust') }}
     - cargo-bundle-licenses
+  host:
     - maturin
-    - onnxruntime-cpp
     - pip
-    - python
+    - python>=3.8
+    - onnxruntime-cpp>=1.16
+    - if: osx
+      then:
+        - libiconv
   run:
+    # Version bound on Python removes it from the variant list - which is what we want
+    - python>=3.8
+    - if: osx
+      then:
+        - libiconv
     - numpy>=1.16.0
     - onnxruntime-cpp>=1.16
-    - python>=3.7
-    - iconv # [osx-arm64]
+  ignore_run_exports:
+    from_package:
+      # Forward compatible C-API
+      - onnxruntime-cpp
 
 tests:
-  - script:
-      - python -c "import onnxrt"
+  - if: target_platform == build_platform
+    then:
+      - python:
+          imports:
+            - onnxrt
+      - script:
+        - pytest ./ort-py/tests
+
+        # additional requirements at test time
+        requirements:
+          run:
+            - pytest
+            - spox
+
+        files:
+          # Extra files to be copied to the test directory from the "work directory"
+          source:
+            - ort-py/tests/
 
 about:
   homepage: https://github.com/cbourjau/ort

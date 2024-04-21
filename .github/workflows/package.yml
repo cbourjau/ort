@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Build package
+    name: Rattler build
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -12,6 +12,7 @@ jobs:
         include:
           - os: ubuntu-latest
             target-platform: linux-64
+          # Linking fails for Windows
           # - os: windows-latest
           #   target-platform: win-64
           - os: macos-latest
@@ -21,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build conda package
-        uses: prefix-dev/rattler-build-action@v0.2.2
+        uses: prefix-dev/rattler-build-action@v0.2.5
         with:
           # needs to be unique for each matrix entry
           artifact-name: package-${{ matrix.target-platform }}
