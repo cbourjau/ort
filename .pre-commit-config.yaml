@@ -12,5 +12,15 @@ repos:
         name: clippy
         language: system
         types: [file, rust]
-        entry: cargo clippy --bins --tests --examples --all -- -D warnings # Use -D warnings option to ensure the job fails when encountering warnings
+         # Use -D warnings option to ensure the job fails when encountering warnings
+        entry: cargo clippy --bins --tests --examples --all -- -D warnings
         pass_filenames: false
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.4.1
+  hooks:
+    # Run the linter.
+    - id: ruff
+      args: [ --fix ]
+    # Run the formatter.
+    - id: ruff-format

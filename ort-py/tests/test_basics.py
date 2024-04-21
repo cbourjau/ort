@@ -29,14 +29,18 @@ def test_basics_session_from_file(tmp_path, add_model: onnx.ModelProto):
     onnx.save(add_model, path)
 
     sess = Session(path=path)
+    # FIXME: Test more attributes once TypeInfo.Tensor gains some getters
+    assert sess.input_infos.keys() == {"a"}
 
 
 def test_basics_session_from_bytes(add_model: onnx.ModelProto):
     sess = Session(model_proto=add_model.SerializeToString())
+    assert sess.input_infos.keys() == {"a"}
 
 
 def test_basics_session_from_protobuf_object(add_model: onnx.ModelProto):
     sess = Session(model_proto=add_model)
+    assert sess.input_infos.keys() == {"a"}
 
 
 def test_type_infos(add_model):
@@ -104,3 +108,16 @@ def test_numeric_and_bool_data_types(dtype):
     exp = inp
     assert candidate.keys() == {"b"}
     np.testing.assert_array_equal(exp, candidate["b"])
+
+
+def test_memory_allocation():
+    """Test if memory allocated on the Rust side is correctly freed."""
+    # This test blows up if the memory cannot be gc'ed
+    for _ in range(100):
+        dtype = np.int64
+        model = make_add_model(dtype)
+        sess = Session(model_proto=model)
+
+        inp = np.arange(10_000_000, dtype=np.int64)
+
+        _ = sess.run({"a": inp})
