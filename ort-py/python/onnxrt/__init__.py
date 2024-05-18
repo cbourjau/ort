@@ -10,8 +10,7 @@ from onnxrt._onnxrt import PySession, TypeInfo
 
 @runtime_checkable
 class ToProtobufBytes(Protocol):
-    def SerializeToString(self) -> bytes:
-        ...
+    def SerializeToString(self) -> bytes: ...
 
 
 class Session:
@@ -25,7 +24,7 @@ class Session:
     ):
         if path is None != model_proto is None:
             raise ValueError("Exactly one of `path` or `model_proto` must be set.")
-        
+
         if path is not None:
             self._py_session = PySession(path=Path(path))
         else:
@@ -34,7 +33,6 @@ class Session:
             else:
                 bytes_ = model_proto  # type: ignore
             self._py_session = PySession(model_proto=bytes_)
-            
 
     def run(self, inputs: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         return self._py_session.run(inputs)
