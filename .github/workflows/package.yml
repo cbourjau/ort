@@ -6,6 +6,7 @@ jobs:
   build:
     name: Rattler build
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
