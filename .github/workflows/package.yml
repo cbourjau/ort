@@ -6,12 +6,12 @@ jobs:
   build:
     name: Rattler build
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             target-platform: linux-64
           # Linking fails for Windows
           # - os: windows-latest

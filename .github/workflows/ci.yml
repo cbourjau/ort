@@ -6,12 +6,12 @@ jobs:
   build:
     name: Build package
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-tatest
             target-platform: linux-64
           # - os: windows-latest
           #   target-platform: win-64
