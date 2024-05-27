@@ -21,6 +21,7 @@ jobs:
           - os: macos-14
             target-platform: osx-arm64
     steps:
+      - uses: actions/checkout@v4
       - name: Build conda package
         uses: prefix-dev/rattler-build-action@v0.2.5
         with:
