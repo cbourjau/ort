@@ -23,7 +23,7 @@ jobs:
       - run: |
           if [[ "${RUNNER_OS}" == macOS ]] ; then
               export RUSTFLAGS="-C link-args=-Wl,-rpath,${CONDA_PREFIX}/lib -L${CONDA_PREFIX}/lib"
-          elif [[ "${RUNNER_OS}" == ubuntu ]] ; then
+          elif [[ "${RUNNER_OS}" == Ubuntu ]] ; then
               export RUSTFLAGS="-C link-arg=-Wl,-rpath-link,${CONDA_PREFIX}/lib -L${CONDA_PREFIX}/lib"
           else
               echo "Windows config TBD"
@@ -31,6 +31,10 @@ jobs:
           cargo fmt -- --check
           cargo clippy --bins --tests --examples --all -- -D warnings
           cargo test --all-features --release -j 1
+
+          cd ort-py
+          maturin develop --release
+          pytest
         shell: pixi run bash -e {0}
         env:
           RUST_BACKTRACE: 1
