@@ -23,8 +23,10 @@ jobs:
       - run: |
           if [[ "${RUNNER_OS}" == macOS ]] ; then
               export RUSTFLAGS="-C link-args=-Wl,-rpath,${CONDA_PREFIX}/lib -L${CONDA_PREFIX}/lib"
-          else
+          elif [[ "${RUNNER_OS}" == ubuntu ]] ; then
               export RUSTFLAGS="-C link-arg=-Wl,-rpath-link,${CONDA_PREFIX}/lib -L${CONDA_PREFIX}/lib"
+          else
+              echo "Windows config TBD"
           fi
           cargo fmt -- --check
           cargo clippy --bins --tests --examples --all -- -D warnings
