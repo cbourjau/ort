@@ -239,9 +239,9 @@ impl Api {
         &self,
         sess: *mut OrtSession,
         run_options: *const OrtRunOptions,
-        in_names: &[*const i8],
+        in_names: &[*const c_char],
         in_values: &[*const OrtValue],
-        out_names: &[*const i8],
+        out_names: &[*const c_char],
     ) -> Result<Vec<Wrapper<OrtValue>>, ErrorStatus> {
         let mut out_values = vec![null_mut(); out_names.len()];
         unsafe {
@@ -494,9 +494,9 @@ impl Api {
     pub unsafe fn get_tensor_shape_symbolic(
         &self,
         tensor_info: *const OrtTensorTypeAndShapeInfo,
-    ) -> Result<Vec<*const i8>, ErrorStatus> {
+    ) -> Result<Vec<*const c_char>, ErrorStatus> {
         let rank = self.get_tensor_rank(tensor_info)?;
-        let mut out: Vec<*const i8> = vec![null(); rank];
+        let mut out: Vec<*const c_char> = vec![null(); rank];
 
         self.api.GetSymbolicDimensions.unwrap()(tensor_info, out.as_mut_ptr() as *mut _, rank)
             .into_result(self.api)?;
@@ -526,7 +526,7 @@ impl Api {
     pub fn get_model_metadata_map(
         &self,
         sess: *const OrtSession,
-    ) -> Result<Vec<(Wrapper<i8>, Wrapper<i8>)>, ErrorStatus> {
+    ) -> Result<Vec<(Wrapper<c_char>, Wrapper<c_char>)>, ErrorStatus> {
         unsafe {
             let meta = self.get_model_metadata(sess)?;
             let keys = self.get_model_metadata_keys(meta.ptr)?;
@@ -557,14 +557,14 @@ impl Api {
     unsafe fn get_model_metadata_keys(
         &self,
         meta: *const OrtModelMetadata,
-    ) -> Result<Vec<Wrapper<i8>>, ErrorStatus> {
+    ) -> Result<Vec<Wrapper<c_char>>, ErrorStatus> {
         let mut n = 0;
         let mut ptrs = null_mut();
         let alloc = self.get_allocator()?;
         self.api.ModelMetadataGetCustomMetadataMapKeys.unwrap()(meta, alloc, &mut ptrs, &mut n)
             .into_result(self.api)?;
 
-        let out: &mut [*mut i8] = slice::from_raw_parts_mut(ptrs, n as usize);
+        let out: &mut [*mut c_char] = slice::from_raw_parts_mut(ptrs, n as usize);
         Ok(out
             .iter_mut()
             .map(|&mut ptr| Wrapper {
@@ -577,8 +577,8 @@ impl Api {
     unsafe fn get_model_metadata_value(
         &self,
         meta: *const OrtModelMetadata,
-        key: *const i8,
-    ) -> Result<Wrapper<i8>, ErrorStatus> {
+        key: *const c_char,
+    ) -> Result<Wrapper<c_char>, ErrorStatus> {
         let mut ptr = null_mut();
         let alloc = self.get_allocator()?;
         self.api.ModelMetadataLookupCustomMetadataMap.unwrap()(meta, alloc, key, &mut ptr)
@@ -590,7 +590,7 @@ impl Api {
     }
 }
 
-unsafe extern "C" fn dealloc_chars(ptr: *mut i8) {
+unsafe extern "C" fn dealloc_chars(ptr: *mut c_char) {
     let api = Api::new();
     let alloc = api.get_allocator().unwrap();
     api.free(alloc, ptr as *mut _).unwrap();
