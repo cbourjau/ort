@@ -8,9 +8,14 @@ use crate::type_info::TypeInfo;
 use crate::{Api, ErrorStatus, IntoValue, Value, Wrapper};
 
 pub struct Session {
-    api: Api,
-    _env: Wrapper<OrtEnv>,
+    // Drop order is important here! Rust drops fields in the order
+    // they are defined. We want to first drop the session and then
+    // the environment it is in. See
+    // https://doc.rust-lang.org/std/ops/trait.Drop.html for more
+    // details.
     ort_sess: Wrapper<OrtSession>,
+    _env: Wrapper<OrtEnv>,
+    api: Api,
     alloc: *mut OrtAllocator,
     input_names: Vec<*const c_char>,
     output_names: Vec<*const c_char>,
