@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build conda package
-        uses: prefix-dev/rattler-build-action@v0.2.14
+        uses: prefix-dev/rattler-build-action@v0.2.15
         with:
           # needs to be unique for each matrix entry
           artifact-name: package-${{ matrix.target-platform }}
